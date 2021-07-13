@@ -6,6 +6,8 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Point;
+import android.graphics.Rect;
 import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
@@ -18,14 +20,26 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.Text;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.TextRecognizerOptions;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int CAMERA_PERM_CODE = 101;
     private static final int CAMERA_REQUEST_CODE = 102;
-    ImageView selectedImage;
-    Button cameraBtn, galleryBtn, checkBtn;
-    TextView textView; //TODO - add OCR result
+    private ImageView selectedImage;
+    private Button cameraBtn, galleryBtn, checkBtn;
+    private TextView textView; //TODO - add OCR result
+
+    private InputImage inputImage;
+    private TextRecognizer textRecognizer;
+    private String stringResult = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,9 +109,52 @@ public class MainActivity extends AppCompatActivity {
         if(requestCode == CAMERA_REQUEST_CODE) {
             assert data != null;
             Bitmap image = (Bitmap) data.getExtras().get("data");
+            inputImage = InputImage.fromBitmap(image, 0);
             selectedImage.setImageBitmap(image);
         }
     }
 
+    private void textRecognize() {
+        textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+        Task<Text> result =
+                textRecognizer.process(inputImage)
+                        .addOnSuccessListener(new OnSuccessListener<Text>() {
+                            @Override
+                            public void onSuccess(Text visionText) {
+                                // Task completed successfully
+                                // ...
+                            }
+                        })
+                        .addOnFailureListener(
+                                new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        // Task failed with an exception
+                                        // ...
+                                    }
+                                });
+
+    }
+
+    private void processImage(Task<Text> result) {
+        String resultText = result.getResult().getText();
+        String elementText = "";
+        for (Text.TextBlock block : result.getResult().getTextBlocks()) {
+            String blockText = block.getText();
+            Point[] blockCornerPoints = block.getCornerPoints();
+            Rect blockFrame = block.getBoundingBox();
+            for (Text.Line line : block.getLines()) {
+                String lineText = line.getText();
+                Point[] lineCornerPoints = line.getCornerPoints();
+                Rect lineFrame = line.getBoundingBox();
+                for (Text.Element element : line.getElements()) {
+                    elementText += element.getText();
+                    Point[] elementCornerPoints = element.getCornerPoints();
+                    Rect elementFrame = element.getBoundingBox();
+                }
+            }
+        }
+        System.out.println(elementText);
+    }
 
 }
