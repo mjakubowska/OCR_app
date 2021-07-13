@@ -35,6 +35,8 @@ public class MainActivity extends AppCompatActivity {
         selectedImage = findViewById(R.id.displayImageView);
         cameraBtn = findViewById(R.id.cameraBtn);
         galleryBtn = findViewById(R.id.galleryBtn);
+        checkBtn = findViewById(R.id.checkBtn);
+        textView = findViewById(R.id.textView);
 
         cameraBtn.setOnClickListener(v -> askCameraPermissions());
 
@@ -50,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
         checkBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Toast.makeText(MainActivity.this, "Check Btn is Clicked", Toast.LENGTH_SHORT).show();
                 //TODO
                 //add OCR
             }
