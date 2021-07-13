@@ -10,6 +10,7 @@ import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -23,7 +24,8 @@ public class MainActivity extends AppCompatActivity {
     private static final int CAMERA_PERM_CODE = 101;
     private static final int CAMERA_REQUEST_CODE = 102;
     ImageView selectedImage;
-    Button cameraBtn, galleryBtn;
+    Button cameraBtn, galleryBtn, checkBtn;
+    TextView textView; //TODO - add OCR result
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,17 +36,22 @@ public class MainActivity extends AppCompatActivity {
         cameraBtn = findViewById(R.id.cameraBtn);
         galleryBtn = findViewById(R.id.galleryBtn);
 
-        cameraBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                askCameraPermissions();
-            }
-        });
+        cameraBtn.setOnClickListener(v -> askCameraPermissions());
 
         galleryBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Toast.makeText(MainActivity.this, "Gallery Btn is Clicked", Toast.LENGTH_SHORT).show();
+                // TODO
+                //chose photo from gallery
+            }
+        });
+
+        checkBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //TODO
+                //add OCR
             }
         });
     }
@@ -83,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if(requestCode == CAMERA_REQUEST_CODE) {
+            assert data != null;
             Bitmap image = (Bitmap) data.getExtras().get("data");
             selectedImage.setImageBitmap(image);
         }
