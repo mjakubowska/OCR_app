@@ -8,8 +8,8 @@
 
     <ImageView
         android:id="@+id/displayImageView"
-        android:layout_width="300dp"
-        android:layout_height="300dp"
+        android:layout_width="241dp"
+        android:layout_height="205dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.495"
@@ -48,12 +48,7 @@
         android:layout_marginStart="169dp"
         android:layout_marginLeft="169dp"
         android:layout_marginTop="17dp"
-        android:layout_marginEnd="154dp"
-        android:layout_marginRight="154dp"
-        android:layout_marginBottom="278dp"
         android:text="check"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/cameraBtn" />
 

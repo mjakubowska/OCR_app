@@ -29,6 +29,8 @@ import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.TextRecognizerOptions;
 
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final int CAMERA_PERM_CODE = 101;
@@ -38,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView textView; //TODO - add OCR result
 
     private InputImage inputImage;
+    private Bitmap bitmapImage;
     private TextRecognizer textRecognizer;
     private String stringResult = null;
 
@@ -68,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Toast.makeText(MainActivity.this, "Check Btn is Clicked", Toast.LENGTH_SHORT).show();
                 //TODO
-                //add OCR
+                runTextRecognition();
             }
         });
     }
@@ -108,53 +111,59 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if(requestCode == CAMERA_REQUEST_CODE) {
             assert data != null;
-            Bitmap image = (Bitmap) data.getExtras().get("data");
-            inputImage = InputImage.fromBitmap(image, 0);
-            selectedImage.setImageBitmap(image);
+            bitmapImage = (Bitmap) data.getExtras().get("data");
+            inputImage = InputImage.fromBitmap(bitmapImage, 0);
+            selectedImage.setImageBitmap(bitmapImage);
         }
     }
 
-    private void textRecognize() {
-        textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
-        Task<Text> result =
-                textRecognizer.process(inputImage)
-                        .addOnSuccessListener(new OnSuccessListener<Text>() {
+    private void runTextRecognition() {
+        InputImage image = InputImage.fromBitmap(bitmapImage, 0);
+        TextRecognizer recognizer = TextRecognition.getClient();
+        checkBtn.setEnabled(false);
+        recognizer.process(image)
+                .addOnSuccessListener(
+                        new OnSuccessListener<Text>() {
                             @Override
-                            public void onSuccess(Text visionText) {
-                                // Task completed successfully
-                                // ...
+                            public void onSuccess(Text texts) {
+                                checkBtn.setEnabled(true);
+                                processTextRecognitionResult(texts);
                             }
                         })
-                        .addOnFailureListener(
-                                new OnFailureListener() {
-                                    @Override
-                                    public void onFailure(@NonNull Exception e) {
-                                        // Task failed with an exception
-                                        // ...
-                                    }
-                                });
-
+                .addOnFailureListener(
+                        new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                // Task failed with an exception
+                                checkBtn.setEnabled(true);
+                                e.printStackTrace();
+                            }
+                        });
     }
 
-    private void processImage(Task<Text> result) {
-        String resultText = result.getResult().getText();
-        String elementText = "";
-        for (Text.TextBlock block : result.getResult().getTextBlocks()) {
-            String blockText = block.getText();
-            Point[] blockCornerPoints = block.getCornerPoints();
-            Rect blockFrame = block.getBoundingBox();
-            for (Text.Line line : block.getLines()) {
-                String lineText = line.getText();
-                Point[] lineCornerPoints = line.getCornerPoints();
-                Rect lineFrame = line.getBoundingBox();
-                for (Text.Element element : line.getElements()) {
-                    elementText += element.getText();
-                    Point[] elementCornerPoints = element.getCornerPoints();
-                    Rect elementFrame = element.getBoundingBox();
+    private void processTextRecognitionResult(Text texts) {
+        List<Text.TextBlock> blocks = texts.getTextBlocks();
+        if (blocks.size() == 0) {
+            showToast("No text found");
+            return;
+        }
+        //mGraphicOverlay.clear();
+        for (int i = 0; i < blocks.size(); i++) {
+            List<Text.Line> lines = blocks.get(i).getLines();
+            for (int j = 0; j < lines.size(); j++) {
+                List<Text.Element> elements = lines.get(j).getElements();
+                for (int k = 0; k < elements.size(); k++) {
+                    String text = elements.get(k).getText();
+                    System.out.println("text: " + text);
+
                 }
             }
         }
-        System.out.println(elementText);
     }
+
+    private void showToast(String message) {
+        Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+    }
+
 
 }
