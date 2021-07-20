@@ -3,12 +3,14 @@ package com.example.ocr_app;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
 import android.graphics.Bitmap;
-import android.graphics.Point;
-import android.graphics.Rect;
+import android.graphics.BitmapFactory;
 import android.provider.MediaStore;
+import android.util.Pair;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -22,34 +24,39 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.text.Text;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
-import com.google.mlkit.vision.text.TextRecognizerOptions;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int CAMERA_PERM_CODE = 101;
     private static final int CAMERA_REQUEST_CODE = 102;
-    private ImageView selectedImage;
+    private ImageView imageView;
     private Button cameraBtn, galleryBtn, checkBtn;
-    private TextView textView; //TODO - add OCR result
+    private TextView textView;
 
     private InputImage inputImage;
     private Bitmap bitmapImage;
     private TextRecognizer textRecognizer;
     private String stringResult = null;
 
+    // Max width (portrait mode)
+    private Integer mImageMaxWidth;
+    // Max height (portrait mode)
+    private Integer mImageMaxHeight;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        selectedImage = findViewById(R.id.displayImageView);
+        imageView = findViewById(R.id.displayImageView);
         cameraBtn = findViewById(R.id.cameraBtn);
         galleryBtn = findViewById(R.id.galleryBtn);
         checkBtn = findViewById(R.id.checkBtn);
@@ -69,8 +76,9 @@ public class MainActivity extends AppCompatActivity {
         checkBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this, "Check Btn is Clicked", Toast.LENGTH_SHORT).show();
-                //TODO
+                //text without camera
+                //bitmapImage = getBitmapFromAsset(imageView.getContext(), "obrocsiewkoncu.jpg");
+                resizePhoto();
                 runTextRecognition();
             }
         });
@@ -113,12 +121,14 @@ public class MainActivity extends AppCompatActivity {
             assert data != null;
             bitmapImage = (Bitmap) data.getExtras().get("data");
             inputImage = InputImage.fromBitmap(bitmapImage, 0);
-            selectedImage.setImageBitmap(bitmapImage);
+            showToast("width: " + inputImage.getWidth() + "; height: " + inputImage.getHeight());
+            imageView.setImageBitmap(bitmapImage);
         }
     }
 
     private void runTextRecognition() {
         InputImage image = InputImage.fromBitmap(bitmapImage, 0);
+        showToast("width: " + image.getWidth() + "; height: " + image.getHeight());
         TextRecognizer recognizer = TextRecognition.getClient();
         checkBtn.setEnabled(false);
         recognizer.process(image)
@@ -147,15 +157,15 @@ public class MainActivity extends AppCompatActivity {
             showToast("No text found");
             return;
         }
+        String text = "";
         //mGraphicOverlay.clear();
         for (int i = 0; i < blocks.size(); i++) {
             List<Text.Line> lines = blocks.get(i).getLines();
             for (int j = 0; j < lines.size(); j++) {
                 List<Text.Element> elements = lines.get(j).getElements();
                 for (int k = 0; k < elements.size(); k++) {
-                    String text = elements.get(k).getText();
-                    System.out.println("text: " + text);
-
+                    text += elements.get(k).getText();
+                    textView.setText(text);
                 }
             }
         }
@@ -165,5 +175,76 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
     }
 
+    private void resizePhoto() {
+        Pair<Integer, Integer> targetedSize = getTargetedWidthHeight();
+
+        int targetWidth = targetedSize.first;
+        int maxHeight = targetedSize.second;
+
+        // Determine how much to scale down the image
+        float scaleFactor =
+                Math.max(
+                        (float) bitmapImage.getWidth() / (float) targetWidth,
+                        (float) bitmapImage.getHeight() / (float) maxHeight);
+
+        Bitmap resizedBitmap =
+                Bitmap.createScaledBitmap(
+                        bitmapImage,
+                        (int) (bitmapImage.getWidth() / scaleFactor),
+                        (int) (bitmapImage.getHeight() / scaleFactor),
+                        true);
+
+        imageView.setImageBitmap(resizedBitmap);
+        bitmapImage = resizedBitmap;
+    }
+
+    private Pair<Integer, Integer> getTargetedWidthHeight() {
+        int targetWidth;
+        int targetHeight;
+        int maxWidthForPortraitMode = getImageMaxWidth();
+        int maxHeightForPortraitMode = getImageMaxHeight();
+        targetWidth = maxWidthForPortraitMode;
+        targetHeight = maxHeightForPortraitMode;
+        return new Pair<>(targetWidth, targetHeight);
+    }
+
+    private Integer getImageMaxWidth() {
+        if (mImageMaxWidth == null) {
+            // Calculate the max width in portrait mode. This is done lazily since we need to
+            // wait for
+            // a UI layout pass to get the right values. So delay it to first time image
+            // rendering time.
+            mImageMaxWidth = imageView.getWidth();
+        }
+
+        return mImageMaxWidth;
+    }
+
+    private Integer getImageMaxHeight() {
+        if (mImageMaxHeight == null) {
+            // Calculate the max width in portrait mode. This is done lazily since we need to
+            // wait for
+            // a UI layout pass to get the right values. So delay it to first time image
+            // rendering time.
+            mImageMaxHeight = imageView.getHeight();
+        }
+
+        return mImageMaxHeight;
+    }
+
+    public static Bitmap getBitmapFromAsset(Context context, String filePath) {
+        AssetManager assetManager = context.getAssets();
+
+        InputStream is;
+        Bitmap bitmap = null;
+        try {
+            is = assetManager.open(filePath);
+            bitmap = BitmapFactory.decodeStream(is);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return bitmap;
+    }
 
 }
